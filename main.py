@@ -12,7 +12,7 @@ confidence = 0.75 #Percentage to take a prediction as succesfull | %50 by defaul
 spec_color = (255,0,0)
 
 #Image
-img_name = "myface.jpeg"
+img_name = "far_away_person_accesories.jpg"
 img_path = 'samples/' + img_name
 
 
@@ -74,7 +74,7 @@ if face_detection_results.detections:
         mp_drawing.draw_detection(image=img_copy, detection=face,
                                   keypoint_drawing_spec=mp_drawing.DrawingSpec(color=(255,0,0),
                                                                                thickness=2,
-                                                                               circle_radius=2))
+                                                                               circle_radius=10))
 
 #Display sample image and result side by side by using sub plots
 fig = plt.figure(figsize=(15,10))

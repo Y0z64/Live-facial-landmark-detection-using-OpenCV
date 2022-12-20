@@ -1,6 +1,7 @@
 import cv2
 import mediapipe as mp
 import matplotlib.pyplot as plt
+import os
 
 #Parameters----------------------------------------------------------------------------
 #Face detection
@@ -8,14 +9,16 @@ face_range = 0 #0 for face wihtin 0-2m from camera | 1 for face within 2-5m from
 confidence = 0.75 #Percentage to take a prediction as succesfull | %50 by default | range 0.0 to 1.0
 spec_color = (255,0,0)
 
-#Image
-imgs_path = ["samples/brown_face.jpg",
-            "samples/close_up_man.jpg",
-            "samples/close_up_woman.jpg",
-            "samples/far_away_man.jpg",
-            "samples/far_away_person_accesories.jpg",
-            "samples/image.png",
-            "samples/myface.jpeg"]
+#Iterate trough all the images in /samples | close the current figure to access the next image
+directory_in_str = '/home/yair/Projects/ComputerVision/face_recognition/samples'
+directory = os.fsencode(directory_in_str)
+
+imgs_path = []
+
+for img in os.listdir(directory):
+    filename = os.fsdecode(img)
+    imgs_path.append("samples/"+filename)
+
 
 
 #Initialization of tools---------------------------------------------------------------
