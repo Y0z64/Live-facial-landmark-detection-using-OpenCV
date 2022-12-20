@@ -12,9 +12,14 @@ confidence = 0.75 #Percentage to take a prediction as succesfull | %50 by defaul
 spec_color = (255,0,0)
 
 #Image
-img_name = "far_away_person_accesories.jpg"
+img_name = "myface.jpeg"
 img_path = 'samples/' + img_name
+max_face_num = 2
 
+#Video
+#video_name =
+#video_path
+max_face_num_v = 1
 
 #Initialization of tools---------------------------------------------------------------
 #initialize face mediapipe face detection
@@ -76,10 +81,71 @@ if face_detection_results.detections:
                                                                                thickness=2,
                                                                                circle_radius=10))
 
-#Display sample image and result side by side by using sub plots
-fig = plt.figure(figsize=(15,10))
+#Detect landmarks and generate face mesh-------------------------------------------
+#Initialize the mediapipe facemesh
+mp_face_mesh = mp.solutions.face_mesh
+
+#Setup the face landmarks function for images.
+face_mesh_images = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=max_face_num,
+                                         min_detection_confidence = confidence)
+
+#Setup the face landmarks fucntion for videos
+face_mesh_videos = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=max_face_num_v,
+                                         min_detection_confidence = confidence)
+
+#Initialize the drawing styles
+mp_drawing_styles = mp.solutions.drawing_styles
+
+#Perfrom landmarks detection
+face_mesh_results = face_mesh_images.process(sample_img[:,:,::-1])
+
+#Get list of indexes in given face part | You can get the indexes for other face parts from mediapipe (Insert link/list here)
+face_parts = {
+    "LEFT_EYE":list(set(itertools.chain(*mp_face_mesh.FACEMESH_LEFT_EYE))),
+    "RIGHT_EYE":list(set(itertools.chain(*mp_face_mesh.FACEMESH_RIGHT_EYE)))
+}
+
+#Check for found facial landmarks
+if face_mesh_results.multi_face_landmarks:
+
+    #Iterate over the found faces
+    for face_no, face_landmarks in enumerate(face_mesh_results.multi_face_landmarks):
+        print(f"Face number: {face_no+1}")
+        print("----------------------------")
+
+        #Display the landmarks of given face part | This code uses your variable name to print said landmark, will remove later
+        for face_part, part_indexes in face_parts:
+            print(f'{face_part}_LANDMARKS:\n')
+
+            for part_index in part_indexes[:2]:
+                #Display the found normalized indexes in given face part
+                print(face_landmarks.landmark[part_index])
+
+#image copy translated to RGB
+mesh_copy = sample_img[:,:,::-1].copy()
+
+#Check if facial landmarks are found
+if face_mesh_results.multi_face_landmarks:
+    #Iterate over the found faces
+    for face_landmarks in face_mesh_results.multi_face_landmarks:
+        #Draw the landmarks in the mesh_copy with the face mesh tesselation connections using default face mesh tesselation style
+        mp_drawing.draw_landmarks(image=mesh_copy,
+                                  landmark_list=face_landmarks,connections=mp_face_mesh.FACEMESH_TESSELATION,
+                                  landmark_drawing_spec=None,
+                                  connection_drawing_spec=mp_drawing_styles.get_default_mesh_tesselation_style())
+
+        mp_drawing.draw_landmarks(image=mesh_copy,
+                                  landmark_list=face_landmarks,connections=mp_face_mesh.FACEMESH_CONTOURS,
+                                  landmark_drawing_spec=None,
+                                  connection_drawing_spec=mp_drawing_styles.get_default_mesh_contours_style())              
+
+
+#Display sample image, result and mesh side by side by using sub plots---------------------------------------------------
+fig = plt.figure(figsize=(20,10))
 ax = fig.add_subplot(1,2,1)
 plt.title("Sample image");plt.axis('off');plt.imshow(sample_img[:,:,::-1]);
 ax1 = fig.add_subplot(1,2,2)
 plt.title("Result");plt.axis("off");plt.imshow(img_copy);
+ax2 = fig.add_subplot(1,2,3)
+plt.title("Mesh image");plt.axis("off");plt.imshow(mesh_copy);
 plt.show()
