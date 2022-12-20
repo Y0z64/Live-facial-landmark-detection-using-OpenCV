@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
 import itertools
-from time import time
 import mediapipe as mp
 import matplotlib.pyplot as plt
+import os
 
 #Parameters----------------------------------------------------------------------------
 #Face detection
@@ -13,12 +13,11 @@ confidence = 0.75 #Percentage to take a prediction as succesfull | %50 by defaul
 #Image
 #img_name = "two_faces_close.jpg"
 #img_path = 'samples_groups/' + img_name
-max_face_num = 1
+max_face_num = 5 #number of faces recognized by the algorithm
+folder_name = "samples_groups" #put your image(s) in a folder and put the name here
+directory_in_str = '/home/yair/Projects/ComputerVision/face_recognition/'+folder_name #state the folder directory finishing in / DO NOT DELETE +folder_name
+directory = os.fsencode(directory_in_str)
 
-#Video
-#video_res =
-#video_aspect = 
-max_face_num_v = 1
 
 #Initialization of tools---------------------------------------------------------------
 #initialize face mediapipe face detection
@@ -38,24 +37,10 @@ mp_face_mesh = mp.solutions.face_mesh
 face_mesh_images = mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=max_face_num,
                                          min_detection_confidence = confidence)
 
-#Setup the face landmarks fucntion for videos
-face_mesh_videos = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=max_face_num_v,
-                                         min_detection_confidence = confidence)
-
 #Initialize the drawing styles
 mp_drawing_styles = mp.solutions.drawing_styles
 
-#Initialization for live video feed
-#Initilize video in 4:3 (1280,960 res)
-camera_video = cv2.VideoCapture(0)
-camera_video.set(3,1792)
-camera_video.set(4,1344)
-
-#Read and display image---------------------------------------------------------------
-#Read an image from specified path
-#sample_img = cv2.imread(img_path)
-
-#Detect landmarks and generate face mesh-------------------------------------------
+#Functions -----------------------------------------------------------------------------------
 def detectFacialLandmarks(image, face_mesh, display = False):
 
     #detect facial landmarks
@@ -90,7 +75,7 @@ def detectFacialLandmarks(image, face_mesh, display = False):
     else:
         return np.ascontiguousarray(output_image[:,:,::-1],dtype=np.uint8), results
 
-#Function to get size of the face
+
 def getSize(image, face_landmarks, INDEXES):
     '''
     This function calculate the height and width of a face part utilizing its landmarks.
@@ -130,7 +115,6 @@ def getSize(image, face_landmarks, INDEXES):
     # Retrurn the calculated width height and the landmarks of the face part.
     return width, height, landmarks
 
-#Function to detect open mouths
 def isOpen(image, face_mesh_results, face_part, threshold=5, display=True):
     '''
     This function checks whether the an eye or mouth of the person(s) is open, 
@@ -236,6 +220,7 @@ def isOpen(image, face_mesh_results, face_part, threshold=5, display=True):
         # Display the output image.
         plt.figure(figsize=[10,10])
         plt.imshow(output_image[:,:,::-1]);plt.title("Output Image");plt.axis('off');
+        plt.show()
     
     # Otherwise
     else:
@@ -244,48 +229,20 @@ def isOpen(image, face_mesh_results, face_part, threshold=5, display=True):
         return output_image, status
 
 
+#main program
+imgs_path = []
 
-#Initialize time
-time1 = 0
+for img in os.listdir(directory):
+    filename = os.fsdecode(img)
+    imgs_path.append(folder_name+"/"+filename)
 
-while camera_video.isOpened():
-    #Read frame
-    ok, frame = camera_video.read()
 
-    #check if frame is read properly if false skip frame | This will limit your life feed fps to the program output
-    if not ok:
-        continue
-
-    #Flip the frame horizontally | there is more options to flip 1 = Selfie view?
-    frame = cv2.flip(frame,1)
-
-    #Perform detection
-    frame, _ = detectFacialLandmarks(frame, face_mesh_videos, display=False)
-
-    #Set the time for this frame to be the current time
-    time2 = time()
-    
-    #Check diff between the previows frame and this
-    if (time2 - time1) > 0:
-        #Calculate fps
-        fps = 1.0/(time2-time1)
-        #Write fps on display
-        cv2.putText(frame, "FPS {}".format(int(fps)),(10,30),
-                    cv2.FONT_HERSHEY_PLAIN,2,(0,255,0),3)
-    
-    #Ipdate previous time fraeme tho this one
-    time1 = time2
-
-    #Display frame
-    cv2.imshow("Face landmaks detection", frame)
-    
-    #Listen for ASCII keys every 1ms | If its ESC key close program
-    k = cv2.waitKey(1) & 0xFF
-    if(k==27):
-        break
-    if(k==66 or 98):
-        cv2.putText(frame, "balls.", (20,30),cv2.FONT_HERSHEY_PLAIN,2,(255,0,0),3)
-
-#close windows and video
-camera_video.release()
-cv2.destroyAllWindows()
+for image_path in imgs_path:
+    image = cv2.imread(image_path)
+    image = cv2.resize(image,None, fx=0.35, fy=0.35, interpolation=cv2.INTER_LINEAR)
+    image = cv2.flip(image, 1)
+    _, face_mesh_results = detectFacialLandmarks(image, face_mesh_images, display=False)
+    if face_mesh_results.multi_face_landmarks:
+        output_image, _ = isOpen(image, face_mesh_results, 'MOUTH', threshold=11, display=False)
+        output_image, _ = isOpen(output_image, face_mesh_results, 'LEFT EYE', threshold=2, display=False)
+        isOpen(output_image, face_mesh_results, 'RIGHT EYE', threshold=2)
