@@ -100,10 +100,10 @@ mp_drawing_styles = mp.solutions.drawing_styles
 face_mesh_results = face_mesh_images.process(sample_img[:,:,::-1])
 
 #Get list of indexes in given face part | You can get the indexes for other face parts from mediapipe (Insert link/list here)
-face_parts = {
+face_parts = dict({
     "LEFT_EYE":list(set(itertools.chain(*mp_face_mesh.FACEMESH_LEFT_EYE))),
     "RIGHT_EYE":list(set(itertools.chain(*mp_face_mesh.FACEMESH_RIGHT_EYE)))
-}
+})
 
 #Check for found facial landmarks
 if face_mesh_results.multi_face_landmarks:
@@ -114,7 +114,7 @@ if face_mesh_results.multi_face_landmarks:
         print("----------------------------")
 
         #Display the landmarks of given face part | This code uses your variable name to print said landmark, will remove later
-        for face_part, part_indexes in face_parts:
+        for face_part, part_indexes in face_parts.items():
             print(f'{face_part}_LANDMARKS:\n')
 
             for part_index in part_indexes[:2]:
@@ -129,23 +129,23 @@ if face_mesh_results.multi_face_landmarks:
     #Iterate over the found faces
     for face_landmarks in face_mesh_results.multi_face_landmarks:
         #Draw the landmarks in the mesh_copy with the face mesh tesselation connections using default face mesh tesselation style
-        mp_drawing.draw_landmarks(image=mesh_copy,
+        mp_drawing.draw_landmarks(image=mesh_copy, 
                                   landmark_list=face_landmarks,connections=mp_face_mesh.FACEMESH_TESSELATION,
-                                  landmark_drawing_spec=None,
-                                  connection_drawing_spec=mp_drawing_styles.get_default_mesh_tesselation_style())
+                                  landmark_drawing_spec=None, 
+                                  connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_tesselation_style())
 
         mp_drawing.draw_landmarks(image=mesh_copy,
                                   landmark_list=face_landmarks,connections=mp_face_mesh.FACEMESH_CONTOURS,
                                   landmark_drawing_spec=None,
-                                  connection_drawing_spec=mp_drawing_styles.get_default_mesh_contours_style())              
+                                  connection_drawing_spec=mp_drawing_styles.get_default_face_mesh_contours_style())              
 
 
 #Display sample image, result and mesh side by side by using sub plots---------------------------------------------------
 fig = plt.figure(figsize=(20,10))
-ax = fig.add_subplot(1,2,1)
+ax = fig.add_subplot(1,3,1)
 plt.title("Sample image");plt.axis('off');plt.imshow(sample_img[:,:,::-1]);
-ax1 = fig.add_subplot(1,2,2)
+ax1 = fig.add_subplot(1,3,2)
 plt.title("Result");plt.axis("off");plt.imshow(img_copy);
-ax2 = fig.add_subplot(1,2,3)
+ax2 = fig.add_subplot(1,3,3)
 plt.title("Mesh image");plt.axis("off");plt.imshow(mesh_copy);
 plt.show()
