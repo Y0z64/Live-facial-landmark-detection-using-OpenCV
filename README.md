@@ -46,9 +46,7 @@ For instalation with Command Promt or Jupyter Notebooks refer to [here.](https:/
 
 Facial recognition and basic landmarks
 
-![three face recognition images, each more complex than the last][logo]
-
-[logo]: https://github.com/Y0z64/Live-privacy-filter-using-OpenCV/tree/master/github_resources/showcase_triple.png "three photos"
+![three face recognition images, each more complex than the last](https://github.com/Y0z64/Live-privacy-filter-using-OpenCV/blob/master/github_resources/showcase_triple.png?raw=true) "Logo Title Text 1")
 
 The program goes trough the live video and obtains the position of the facial landmarks, then censors the selected landmarks and outputs the censored frames
 
