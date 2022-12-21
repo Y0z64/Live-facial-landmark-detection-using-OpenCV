@@ -1,9 +1,9 @@
 import cv2
 import numpy as np
 import itertools
-from time import time
 import mediapipe as mp
 import matplotlib.pyplot as plt
+import numpy as np
 
 #Parameters----------------------------------------------------------------------------
 #Face detection
@@ -44,12 +44,6 @@ face_mesh_videos = mp_face_mesh.FaceMesh(static_image_mode=False, max_num_faces=
 
 #Initialize the drawing styles
 mp_drawing_styles = mp.solutions.drawing_styles
-
-#Initialization for live video feed
-#Initilize video in 4:3 (1280,960 res)
-camera_video = cv2.VideoCapture(0)
-camera_video.set(3,1792)
-camera_video.set(4,1344)
 
 #Read and display image---------------------------------------------------------------
 #Read an image from specified path
@@ -244,48 +238,205 @@ def isOpen(image, face_mesh_results, face_part, threshold=5, display=True):
         return output_image, status
 
 
+def overlay(image, filter_img, face_landmarks, face_part, INDEXES, display=True):
+    '''
+        image:          The image of a person on which the filter image will be overlayed.
+        filter_img:     The filter image that is needed to be overlayed on the image of the person.
+        face_landmarks: The facial landmarks of the person in the image.
+        face_part:      The name of the face part on which the filter image will be overlayed.
+        INDEXES:        The indexes of landmarks of the face part.
+        display:        A boolean value that is if set to true the function displays 
+                        the annotated image and returns nothing.'''
+    
+    #set RGB if necesary
+    annotated_img = image.copy()
 
-#Initialize time
-time1 = 0
+    #Error handling for resize of the image
+    try:
+        #get x,y of image
+        filter_img_height, filter_img_width,_ = filter_img.shape()
+        _,face_part_height, landmarks = getSize(image, face_landmarks, INDEXES)
+        required_heigth = int(face_part_height*2.5)
+        #keep aspect ratio
+        resized_filter_img = cv2.resize(filter_img, (int(filter_img_width*(required_heigth/filter_img_height)),required_heigth))
+        #get new sizes
+        filter_img_height,filter_img_width,_ = resized_filter_img.shape
+        #convert to B&W to get the mask image
+        _,filter_img_mask = cv2.threshold(cv2.cvtColor(resized_filter_img, cv2.COLOR_BGR2GRAY)
+                                                       ,25,255,cv2.THRESH_BINARY_INV)
+        #Calculate the center of the face part
+        center = landmarks.mean(axis=0).astype("int")
 
+        #Check if the face part is true | Customize this with your own face parts
+        if face_part == "MOUTH":
+            #Calculate the location where the smoke filter will be placed
+            location = (int(center[0]-filter_img_width / 3), int(center[1]))
+        else: #if an eye
+            location = (int(center[0]-filter_img_width/2),int(center[1]-filter_img_height/2))
+        
+        #retrieve the region from the image where the filter will be placed
+        ROI = image[location[1]: location[1]+filter_img_height,
+                    location[0]: location[0]+filter_img_width]
+        #Set the pixels in the region to 0 using Bitwise-AND
+        resultant_img = cv2.bitwise_and(ROI,ROI, mask=filter_img_mask)
+        #Add the resultant image and the resized filter image by updating the pixes set to 0 to those set by the img
+        resultant_img = cv2.add(resultant_img, resized_filter_img)
+
+        #Update the region with the resultant image
+        annotated_img[location[1]: location[1]+filter_img_height,
+                      location[0]: location[0]+filter_img_width] = resultant_img
+    
+    except Exception as e:
+        pass
+    
+    #Check if its specified to be displayed
+    if display:
+        plt.figure(figsize=[10,10])
+        plt.imshow(annotated_img[:,:,::-1]);plt.title("Face filter applied");plt.axis('off');
+    else:
+        return annotated_img
+
+# #Function to overlay
+# def overlay(image, filter_img, face_landmarks, face_part, INDEXES, display=True):
+#     '''
+#     This function will overlay a filter image over a face part of a person in the image/frame.
+#     Args:
+#         image:          The image of a person on which the filter image will be overlayed.
+#         filter_img:     The filter image that is needed to be overlayed on the image of the person.
+#         face_landmarks: The facial landmarks of the person in the image.
+#         face_part:      The name of the face part on which the filter image will be overlayed.
+#         INDEXES:        The indexes of landmarks of the face part.
+#         display:        A boolean value that is if set to true the function displays 
+#                         the annotated image and returns nothing.
+#     Returns:
+#         annotated_image: The image with the overlayed filter on the top of the specified face part.
+#     '''
+    
+#     # Create a copy of the image to overlay filter image on.
+#     annotated_image = image.copy()
+    
+#     # Errors can come when it resizes the filter image to a too small or a too large size .
+#     # So use a try block to avoid application crashing.
+#     try:
+    
+#         # Get the width and height of filter image.
+#         filter_img_height, filter_img_width, _  = filter_img.shape
+
+#         # Get the height of the face part on which we will overlay the filter image.
+#         _, face_part_height, landmarks = getSize(image, face_landmarks, INDEXES)
+        
+#         # Specify the height to which the filter image is required to be resized.
+#         required_height = int(face_part_height*2.5)
+        
+#         # Resize the filter image to the required height, while keeping the aspect ratio constant. 
+#         resized_filter_img = cv2.resize(filter_img, (int(filter_img_width*
+#                                                          (required_height/filter_img_height)),
+#                                                      required_height))
+        
+#         # Get the new width and height of filter image.
+#         filter_img_height, filter_img_width, _  = resized_filter_img.shape
+
+#         # Convert the image to grayscale and apply the threshold to get the mask image.
+#         _, filter_img_mask = cv2.threshold(cv2.cvtColor(resized_filter_img, cv2.COLOR_BGR2GRAY),
+#                                            25, 255, cv2.THRESH_BINARY_INV)
+
+#         # Calculate the center of the face part.
+#         center = landmarks.mean(axis=0).astype("int")
+
+#         # Check if the face part is mouth.
+#         if face_part == 'MOUTH':
+
+#             # Calculate the location where the smoke filter will be placed.  
+#             location = (int(center[0] - filter_img_width / 3), int(center[1]))
+
+#         # Otherwise if the face part is an eye.
+#         else:
+
+#             # Calculate the location where the eye filter image will be placed.  
+#             location = (int(center[0]-filter_img_width/2), int(center[1]-filter_img_height/2))
+
+#         # Retrieve the region of interest from the image where the filter image will be placed.
+#         ROI = image[location[1]: location[1] + filter_img_height,
+#                     location[0]: location[0] + filter_img_width]
+
+#         # Perform Bitwise-AND operation. This will set the pixel values of the region where,
+#         # filter image will be placed to zero.
+#         resultant_image = cv2.bitwise_and(ROI, ROI, mask=filter_img_mask)
+
+#         # Add the resultant image and the resized filter image.
+#         # This will update the pixel values of the resultant image at the indexes where 
+#         # pixel values are zero, to the pixel values of the filter image.
+#         resultant_image = cv2.add(resultant_image, resized_filter_img)
+
+#         # Update the image's region of interest with resultant image.
+#         annotated_image[location[1]: location[1] + filter_img_height,
+#                         location[0]: location[0] + filter_img_width] = resultant_image
+            
+#     # Catch and handle the error(s).
+#     except Exception as e:
+#         pass
+    
+#     # Check if the annotated image is specified to be displayed.
+#     if display:
+
+#         # Display the annotated image.
+#         plt.figure(figsize=[10,10])
+#         plt.imshow(annotated_image[:,:,::-1]);plt.title("Output Image");plt.axis('off');
+    
+#     # Otherwise
+#     else:
+            
+#         # Return the annotated image.
+#         return annotated_image
+
+
+#MAIN---------------------------------------------------------------------------------------------
+#Initilize video in 4:3 (1280,960 res)
+camera_video = cv2.VideoCapture(0)
+camera_video.set(3,1280)
+camera_video.set(4,960)
+ 
+# Create named window for resizing purposes.
+cv2.namedWindow('Face Filter', cv2.WINDOW_NORMAL)
+
+# Read the left and right eyes images.
+left_eye = cv2.imread('filters/googly_eye.png')
+right_eye = cv2.imread('filters/black_rectangle.png')
+ 
+# Create blank image
+blank_image = np.zeros((left_eye.shape[0], left_eye.shape[1], 3), dtype=np.uint8)
+
+
+# Iterate until the webcam is accessed successfully.
 while camera_video.isOpened():
-    #Read frame
     ok, frame = camera_video.read()
-
-    #check if frame is read properly if false skip frame | This will limit your life feed fps to the program output
     if not ok:
         continue
 
-    #Flip the frame horizontally | there is more options to flip 1 = Selfie view?
-    frame = cv2.flip(frame,1)
+    #flip the frame
+    frame = cv2.flip(frame, 1)
 
-    #Perform detection
-    frame, _ = detectFacialLandmarks(frame, face_mesh_videos, display=False)
+    #set the blank rectangle in frame
+    cv2.rectangle(blank_image, (0,0), (left_eye.shape[1], left_eye.shape[0]), (0,0,0), -1)
 
-    #Set the time for this frame to be the current time
-    time2 = time()
-    
-    #Check diff between the previows frame and this
-    if (time2 - time1) > 0:
-        #Calculate fps
-        fps = 1.0/(time2-time1)
-        #Write fps on display
-        cv2.putText(frame, "FPS {}".format(int(fps)),(10,30),
-                    cv2.FONT_HERSHEY_PLAIN,2,(0,255,0),3)
-    
-    #Ipdate previous time fraeme tho this one
-    time1 = time2
+    # Perform Face landmarks detection.
+    _,face_mesh_results= detectFacialLandmarks(frame, face_mesh_videos, display=False)
 
-    #Display frame
-    cv2.imshow("Face landmaks detection", frame)
-    
-    #Listen for ASCII keys every 1ms | If its ESC key close program
-    k = cv2.waitKey(1) & 0xFF
-    if(k==27):
+    if face_mesh_results.multi_face_landmarks:
+        for face_num, face_landmarks in enumerate(face_mesh_results.multi_face_landmarks):
+            frame = overlay(frame, left_eye[:,:,::-1], face_landmarks,
+                'LEFT EYE', mp_face_mesh.FACEMESH_LEFT_EYE, display=False,)
+            frame = overlay(frame, left_eye, face_landmarks,
+                            'RIGHT EYE', mp_face_mesh.FACEMESH_RIGHT_EYE, display=False,)
+
+    # Display the frame.
+    cv2.imshow('Face Filter', frame)
+
+    # Check if 'ESC' is pressed and break the loop.
+    k = cv2.waitKey(1) &  0xFF
+    if(k == 27):
         break
-    if(k==66 or 98):
-        cv2.putText(frame, "balls.", (20,30),cv2.FONT_HERSHEY_PLAIN,2,(255,0,0),3)
-
-#close windows and video
+ 
+# Release the VideoCapture Object and close the windows.                  
 camera_video.release()
 cv2.destroyAllWindows()
